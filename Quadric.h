@@ -58,7 +58,9 @@ double error(arma::vec v)
  
   arma::mat res=(vt*Q)*v;
   // std:: cout<<vt<<"  "<<v<<std::endl;
-   
+   if(res(0,0)<0.001)
+    return 0.;
+    else
     return res(0,0);
    
 }
