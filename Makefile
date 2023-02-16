@@ -1,6 +1,6 @@
 EXT = cpp
 CXX=g++
-CFLAGS=-Wall -I/usr/local/include
+CFLAGS=-Wall -I/usr/local/include 
 CFLAGS=
 LDFLAGS= -lGL -lGLEW -lGLU -lglut  -larmadillo -lassimp -lpmp
 #LDFLAGS= -lGL -lGLU -lGLEW -lglut -lm 

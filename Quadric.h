@@ -32,6 +32,19 @@ public:
        
        
     }
+
+
+    Quadric(arma::mat m):Q(m)
+    {
+      
+     
+    }
+
+arma::mat getMat()
+{
+    return Q;
+    
+}
 void add(Quadric Q2)
 {
     Q=Q+Q2.Q;
@@ -42,9 +55,15 @@ double error(arma::vec v)
 
 
   arma::mat vt=  arma::trans(v);
+ 
   arma::mat res=(vt*Q)*v;
+  // std:: cout<<vt<<"  "<<v<<std::endl;
+   
     return res(0,0);
+   
 }
+
+
   
 
 } ;

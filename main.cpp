@@ -23,9 +23,10 @@ using namespace std;
 void computeQuadrix(pmp::SurfaceMesh & ppmmesh)
 {
   pmp::Normals::compute_face_normals(ppmmesh);
-  auto quadrics =ppmmesh.add_vertex_property<pmp::Scalar>("added:quadrics");
+ // auto quadrics =ppmmesh.add_vertex_property<pmp::Scalar>("added:quadrics");
   auto normales= ppmmesh.get_face_property<pmp::Normal>("f:normal");
   pmp::VertexProperty<pmp::Point>  points = ppmmesh.get_vertex_property<pmp::Point>("v:point");
+  auto Qmat =ppmmesh.add_vertex_property<arma::mat>("added:Qmat");
 
 
  //
@@ -41,8 +42,15 @@ void computeQuadrix(pmp::SurfaceMesh & ppmmesh)
        q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][1]}));
        
       }
-     cout <<Q(points[v])<<" "<<q.error({points[v][0],points[v][1],points[v][1],1})<<endl;
-  
+      Qmat[v]=q.getMat();
+      /*
+      double d=q.error({points[v][0],points[v][1],points[v][1],1});
+      if(d<0.001)
+      quadrics[v]=0;
+      else
+      quadrics[v]=d;
+  //   cout <<Q(points[v])<<" "<<q.error({points[v][0],points[v][1],points[v][1],1})<<endl;
+  */
   }
  
  
@@ -248,8 +256,8 @@ void computeSaillancy(pmp::SurfaceMesh & ppmmesh)
 
 int main(int argc, char const *argv[])
 {
-     string filename="../object/meshes/armadillo.off";
-     //string filename="../object/meshes/sphere.off";
+     string filename="object/meshes/armadillo.off";
+     //string filename="object/meshes/sphere.off";
      pmp::SurfaceMesh ppmmesh;
      pmp::read(ppmmesh,filename);
     
@@ -260,32 +268,53 @@ int main(int argc, char const *argv[])
 
           return true;*/
     
- arma::vec a={0,0,0};
- arma::vec b={0,1,0};
- arma::vec c={0,0,1};
-arma::vec ab=b-a;
-arma::vec ac=c-a;
 
-arma::vec cro=arma::cross(ab,ac);
-arma::vec cros=arma::cross(ac,ab);
-//cout <<ab<<endl;
-//cout <<ac<<endl;
-cout <<cro<<endl;
-//cout <<cros<<endl;
-      pmp::Quadric Q=pmp::Quadric();
-      Quadric q(cro,a);
+     computeQuadrix(ppmmesh);
+     auto quadrics =ppmmesh.get_vertex_property<arma::mat>("added:Qmat");
+     auto Qprime =ppmmesh.add_edge_property<arma::mat>("added:Qprime");
+     auto Optimaleposition =ppmmesh.add_edge_property<arma::vec>("added:optimal");
+     auto Cout =ppmmesh.add_edge_property<pmp::Scalar>("added:cout");
+  int i=0;
+     for (auto e:ppmmesh.edges()) 
+     {
+      Qprime[e]=quadrics[ppmmesh.vertex(e,0)]+quadrics[ppmmesh.vertex(e,1)];
+     
+     arma::mat res=  arma::inv(Qprime[e]);
+     Optimaleposition[e] ={res(3,0),res(3,1),res(3,2),res(3,3)};
+     Quadric q(Qprime[e]);
+     Cout[e]=q.error(Optimaleposition[e] );
+       cout<<Cout[e]<<endl;
+     }
 
-    //  cout<<q.error({0,0,0,1})<<endl;
+   
+   /*
+ 
+    cout<<i<<" "<<ppmmesh.position(ppmmesh.vertex(e,0))<<"cvjhgcvjhgc "<<ppmmesh.position(ppmmesh.vertex(e,1))<<endl;
+    }
+    cout<<i<<endl;
+ 
+int j=0;
+     for (auto e:ppmmesh.halfedges()) 
+     {
+          j++;
 
+ 
+   //  cout<<i<<" "<<ppmmesh.position(ppmmesh.vertex(e,0))<<" "<<ppmmesh.position(ppmmesh.vertex(e,1))<<endl;
+    }
+cout<<j<<endl;
 
-
-
-   //  computeQuadrix(ppmmesh);
-    // computeSaillancy(ppmmesh);
-//     auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
-   //  for (auto v:ppmmesh.vertices())  
-     //     cout<<smoothsaillancy[v]<<endl;
-
+    
+     for (auto v:ppmmesh.vertices())  
+    ppmmesh.position(v)[0]=10;
+     for (auto v:ppmmesh.vertices())  
+     cout<<ppmmesh.position(v)<<endl;
+        //  cout<<quadrics[v]<<endl;
+   
+     computeSaillancy(ppmmesh);
+     auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
+     auto quadrics =ppmmesh.get_vertex_property<pmp::Scalar>("added:quadrics");
+     
+*/
  
 
 
@@ -346,7 +375,7 @@ cout <<cro<<endl;
 
 
 
-     //pmp::write(ppmmesh,"output.obj");
+  //   pmp::write(ppmmesh,"output.obj");
 
 
      return 0;
