@@ -219,11 +219,11 @@ void computeQuadrix(pmp::SurfaceMesh & ppmmesh)
       for(auto f:ppmmesh.faces(v))
       {
         // cout<<Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][1]}).error({points[v][0],points[v][1],points[v][1],1})<<endl;
-       q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][1]}));
+       q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][2]}));
       }
       Qmat[v]=q.getMat();
       
-   //  cout<<q.error({points[v][0],points[v][1],points[v][1],1})<<endl;
+   //  cout<<q.error({points[v][0],points[v][1],points[v][2],1})<<endl;
   }
   
 }
@@ -307,7 +307,7 @@ void ComputePAirInfos(pmp::SurfaceMesh & ppmmesh)
       for(auto f:ppmmesh.faces(v))
       {
    
-       q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][1]}));
+       q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][2]}));
       }
       Qmat[v]=q.getMat();
       
@@ -337,23 +337,22 @@ void decimer(pmp::SurfaceMesh & ppmmesh)
      auto Cout =ppmmesh.get_edge_property<pmp::Scalar>("added:cout");
      pmp::Edge e= bestCout(ppmmesh);
 
-/*
+ 
+     
      ppmmesh.position(ppmmesh.vertex(e,1))[0]= Optimaleposition[e](0);
      ppmmesh.position(ppmmesh.vertex(e,1))[1]= Optimaleposition[e](1);
      ppmmesh.position(ppmmesh.vertex(e,1))[2]= Optimaleposition[e](2);
      ppmmesh.position(ppmmesh.vertex(e,0))[0]= Optimaleposition[e](0);
      ppmmesh.position(ppmmesh.vertex(e,0))[1]= Optimaleposition[e](1);
    ppmmesh.position(ppmmesh.vertex(e,0))[2]= Optimaleposition[e](2);
-    */ 
-     pmp::Vertex v0=ppmmesh.vertex(e,0);
+    
+    pmp::Vertex v0=ppmmesh.vertex(e,0);
       pmp::Vertex v1=ppmmesh.vertex(e,1);
-      cout<<  ppmmesh.position(v0)<<endl;
-      cout<<  ppmmesh.position(v1)<<endl;
-      cout <<Optimaleposition[e]<<endl;
+    //  cout <<Optimaleposition[e]<<endl;
       ppmmesh.collapse( ppmmesh.find_halfedge(v0,v1 ));
    
 ppmmesh.garbage_collection();
- //  cout<<  ppmmesh.position(v1)<<endl;
+ 
 updatePaireInfo( ppmmesh);
 
 }
@@ -362,8 +361,8 @@ updatePaireInfo( ppmmesh);
 
 int main(int argc, char const *argv[])
 {
-    // string filename="object/meshes/armadillo.off";
-  string filename="object/meshes/sphere.off";
+     string filename="object/meshes/armadillo.off";
+  //string filename="object/meshes/sphere.off";
      //string filename="object/meshes/cube.off";
      pmp::SurfaceMesh ppmmesh;
      pmp::read(ppmmesh,filename);
@@ -373,7 +372,7 @@ int main(int argc, char const *argv[])
 
      computeQuadrix(ppmmesh);
      ComputePAirInfos(ppmmesh);
- for(int i=0;i<50;i++)
+ for(int i=0;i<1000;i++)
     decimer( ppmmesh);
     
 
