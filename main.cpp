@@ -251,12 +251,13 @@ void ComputePAirInfos(pmp::SurfaceMesh & ppmmesh)
      auto Qprime =ppmmesh.add_edge_property<arma::mat>("added:Qprime");
      auto Optimaleposition =ppmmesh.add_edge_property<arma::vec>("added:optimal");
      auto Cout =ppmmesh.add_edge_property<pmp::Scalar>("added:cout");
+     auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
      for (auto e:ppmmesh.edges()) 
      {
           Qprime[e]=quadrics[ppmmesh.vertex(e,0)]+quadrics[ppmmesh.vertex(e,1)];
           Optimaleposition[e]=Optimalposition( Qprime[e]);
           Quadric q(Qprime[e]);
-          Cout[e]=q.error(Optimaleposition[e]);
+          Cout[e]=q.error(Optimaleposition[e])+smoothsaillancy[ppmmesh.vertex(e,0)]+smoothsaillancy[ppmmesh.vertex(e,1)];
       //    cout<< Cout[e]<<endl;
      }
 
@@ -288,7 +289,7 @@ void ComputePAirInfos(pmp::SurfaceMesh & ppmmesh)
      return best;
 
  }
- void updatePaireInfo(pmp::SurfaceMesh & ppmmesh)
+ void updatePaireInfo(pmp::SurfaceMesh & ppmmesh,pmp::Vertex & toupdate)
  {
       pmp::Normals::compute_face_normals(ppmmesh);
  // auto quadrics =ppmmesh.add_vertex_property<pmp::Scalar>("added:quadrics");
@@ -299,8 +300,8 @@ void ComputePAirInfos(pmp::SurfaceMesh & ppmmesh)
   auto Qprime =ppmmesh.get_edge_property<arma::mat>("added:Qprime");
   auto Optimaleposition =ppmmesh.get_edge_property<arma::vec>("added:optimal");
   auto Cout =ppmmesh.get_edge_property<pmp::Scalar>("added:cout");
-
- for (auto v:ppmmesh.vertices()) 
+ auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
+ for (auto v:ppmmesh.vertices(toupdate)) 
   {
      
       Quadric q({0,0,0},{0,0,0});
@@ -310,19 +311,16 @@ void ComputePAirInfos(pmp::SurfaceMesh & ppmmesh)
        q.add(Quadric({normales[f][0],normales[f][1],normales[f][2]},{points[v][0],points[v][1],points[v][2]}));
       }
       Qmat[v]=q.getMat();
-      
-    // cout<<q.error({points[v][0],points[v][1],points[v][1],1})<<endl;
+      pmp::Edge e=ppmmesh.find_edge(toupdate,v);
+      Qprime[e]=Qmat[ppmmesh.vertex(e,0)]+Qmat[ppmmesh.vertex(e,1)];
+      Optimaleposition[e]=Optimalposition( Qprime[e]);
+      Quadric Q(Qprime[e]);
+    
+      Cout[e]=Q.error(Optimaleposition[e])+smoothsaillancy[ppmmesh.vertex(e,0)]+smoothsaillancy[ppmmesh.vertex(e,1)];
   }
 
 
- for (auto e:ppmmesh.edges()) 
-     {
-          Qprime[e]=Qmat[ppmmesh.vertex(e,0)]+Qmat[ppmmesh.vertex(e,1)];
-          Optimaleposition[e]=Optimalposition( Qprime[e]);
-          Quadric q(Qprime[e]);
-          Cout[e]=q.error(Optimaleposition[e]);
-         // cout<< Cout[e]<<endl;
-     }
+
     
 
 
@@ -335,25 +333,27 @@ void decimer(pmp::SurfaceMesh & ppmmesh)
      auto Qprime =ppmmesh.get_edge_property<arma::mat>("added:Qprime");
      auto Optimaleposition =ppmmesh.get_edge_property<arma::vec>("added:optimal");
      auto Cout =ppmmesh.get_edge_property<pmp::Scalar>("added:cout");
+     auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
      pmp::Edge e= bestCout(ppmmesh);
-
- 
+     pmp::Vertex v0=ppmmesh.vertex(e,0);
+     pmp::Vertex v1=ppmmesh.vertex(e,1);
+     quadrics[v1]=  Qprime[e];
+ smoothsaillancy[v1]=smoothsaillancy[v0]+smoothsaillancy[v1];
      
-     ppmmesh.position(ppmmesh.vertex(e,1))[0]= Optimaleposition[e](0);
-     ppmmesh.position(ppmmesh.vertex(e,1))[1]= Optimaleposition[e](1);
-     ppmmesh.position(ppmmesh.vertex(e,1))[2]= Optimaleposition[e](2);
-     ppmmesh.position(ppmmesh.vertex(e,0))[0]= Optimaleposition[e](0);
-     ppmmesh.position(ppmmesh.vertex(e,0))[1]= Optimaleposition[e](1);
-   ppmmesh.position(ppmmesh.vertex(e,0))[2]= Optimaleposition[e](2);
+     ppmmesh.position(v1)[0]= Optimaleposition[e](0);
+     ppmmesh.position(v1)[1]= Optimaleposition[e](1);
+     ppmmesh.position(v1)[2]= Optimaleposition[e](2);
+     ppmmesh.position(v0)[0]= Optimaleposition[e](0);
+     ppmmesh.position(v0)[1]= Optimaleposition[e](1);
+     ppmmesh.position(v0)[2]= Optimaleposition[e](2);
     
-    pmp::Vertex v0=ppmmesh.vertex(e,0);
-      pmp::Vertex v1=ppmmesh.vertex(e,1);
+   
     //  cout <<Optimaleposition[e]<<endl;
       ppmmesh.collapse( ppmmesh.find_halfedge(v0,v1 ));
    
 ppmmesh.garbage_collection();
- 
-updatePaireInfo( ppmmesh);
+
+updatePaireInfo( ppmmesh,v1);
 
 }
 
@@ -361,68 +361,33 @@ updatePaireInfo( ppmmesh);
 
 int main(int argc, char const *argv[])
 {
-     string filename="object/meshes/armadillo.off";
-  //string filename="object/meshes/sphere.off";
-     //string filename="object/meshes/cube.off";
+  // string filename="object/meshes/armadillo.off";
+   //string filename="object/meshes/sphere.off";
+   //  string filename="object/meshes/cube.off";
+     string filename="object/meshes/cow.off";
      pmp::SurfaceMesh ppmmesh;
      pmp::read(ppmmesh,filename);
     
 
-  
+     computeSaillancy(ppmmesh);
 
      computeQuadrix(ppmmesh);
      ComputePAirInfos(ppmmesh);
- for(int i=0;i<1000;i++)
-    decimer( ppmmesh);
+     for(int i=0;i<1200;i++)
+      decimer( ppmmesh);
     
 
 
 
-     /*
-          if(Cout[e]==0.&& ppmmesh.is_collapse_ok(ppmmesh.halfedge(ppmmesh.vertex(e,0) ))&& ppmmesh.is_boundary(ppmmesh.vertex(e,0))==false)
-         {
 
-          ppmmesh.position(ppmmesh.vertex(e,1))[0]= Optimaleposition[e](0);
-          ppmmesh.position(ppmmesh.vertex(e,1))[1]= Optimaleposition[e](1);
-          ppmmesh.position(ppmmesh.vertex(e,1))[2]= Optimaleposition[e](2);
-
-          ppmmesh.position(ppmmesh.vertex(e,0))[0]= Optimaleposition[e](0);
-          ppmmesh.position(ppmmesh.vertex(e,0))[1]= Optimaleposition[e](1);
-          ppmmesh.position(ppmmesh.vertex(e,0))[2]= Optimaleposition[e](2);
-          ppmmesh.collapse(  ppmmesh.halfedge(ppmmesh.vertex(e,0) ));
-         }
     
-ppmmesh.garbage_collection();
-
-       cout<<i<<endl;
+ 
    
- 
-    cout<<i<<" "<<ppmmesh.position(ppmmesh.vertex(e,0))<<"cvjhgcvjhgc "<<ppmmesh.position(ppmmesh.vertex(e,1))<<endl;
-    }
-
- 
-int j=0;
-     for (auto e:ppmmesh.halfedges()) 
-     {
-          j++;
-
- 
-   //  cout<<i<<" "<<ppmmesh.position(ppmmesh.vertex(e,0))<<" "<<ppmmesh.position(ppmmesh.vertex(e,1))<<endl;
-    }
-cout<<j<<endl;
-
     
-     for (auto v:ppmmesh.vertices())  
-    ppmmesh.position(v)[0]=10;
-     for (auto v:ppmmesh.vertices())  
-     cout<<ppmmesh.position(v)<<endl;
-        //  cout<<quadrics[v]<<endl;
-   
-     computeSaillancy(ppmmesh);
      auto smoothsaillancy = ppmmesh.get_vertex_property<pmp::Scalar>("added:smoothsaillancy");
      auto quadrics =ppmmesh.get_vertex_property<pmp::Scalar>("added:quadrics");
      
-*/
+
  
 
 
@@ -459,7 +424,7 @@ cout<<j<<endl;
 
 
 
-     pmp::write(ppmmesh,"output.obj");
+     pmp::write(ppmmesh,"output.off");
 
 
      return 0;
